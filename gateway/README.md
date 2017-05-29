@@ -1,4 +1,3 @@
 #Gateway
 
-Using a serial gateway (short range antenna though)
-
+Using a serial gateway
