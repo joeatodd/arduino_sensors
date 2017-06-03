@@ -64,8 +64,12 @@ static const uint64_t UPDATE_INTERVAL = 6000;
 // i.e. the sensor would force sending an update every UPDATE_INTERVAL*FORCE_UPDATE_N_READS [ms]
 static const uint8_t FORCE_UPDATE_N_READS = 10;
 
+unsigned long PIR_SLEEP_TIME = 120000; // Sleep time between reports (in milliseconds)
+#define DIGITAL_INPUT_PIR 2   // The digital input you attached your motion sensor.  (Only 2 and 3 g
+
 #define CHILD_ID_HUM 0
 #define CHILD_ID_TEMP 1
+#define CHILD_ID_PIR 2
 
 float lastTemp;
 float lastHum;
@@ -77,38 +81,51 @@ MyMessage msgHum(CHILD_ID_HUM, V_HUM);
 MyMessage msgTemp(CHILD_ID_TEMP, V_TEMP);
 DHT dht;
 
+// Initialize motion message
+MyMessage msgPIR(CHILD_ID_PIR, V_TRIPPED);
+
 
 void presentation()  
 { 
   // Send the sketch version information to the gateway
-  sendSketchInfo("ShedMonitor", "1.0");
+  sendSketchInfo("ShedMonitor", "1.1");
   
   // Register all sensors to gw (they will be created as child devices)
   present(CHILD_ID_HUM, S_HUM);
   present(CHILD_ID_TEMP, S_TEMP);
-  
+  present(CHILD_ID_PIR, S_MOTION);
+
   metric = getControllerConfig().isMetric;
 }
 
 
 void setup()
 {
-  dht.setup(DHT_DATA_PIN, 1); // set data pin of DHT sensor
+  dht.setup(DHT_DATA_PIN); // set data pin of DHT sensor
   if (UPDATE_INTERVAL <= dht.getMinimumSamplingPeriod()) {
     Serial.println("Warning: UPDATE_INTERVAL is smaller than supported by the sensor!");
   }
   // Sleep for the time of the minimum sampling period to give the sensor time to power up
   // (otherwise, timeout errors might occure for the first reading)
   sleep(dht.getMinimumSamplingPeriod());
+
+  pinMode(DIGITAL_INPUT_PIR, INPUT);      // sets the motion sensor digital pin as input
 }
 
 
 void loop()      
 {  
+  // Read digital motion value
+  bool tripped = digitalRead(DIGITAL_INPUT_PIR) == HIGH;
+  Serial.println(tripped);
+  send(msgPIR.set(tripped?"1":"0"));  // Send tripped value to gw
+
+
   // Force reading sensor, so it works also after sleep()
   dht.readSensor(true);
   // Get temperature from DHT library
   float temperature = dht.getTemperature();
+  Serial.println(temperature);
   if (isnan(temperature)) {
     Serial.println("Failed reading temperature from DHT!");
   } else if (temperature != lastTemp || nNoUpdatesTemp == FORCE_UPDATE_N_READS) {
@@ -152,5 +169,6 @@ void loop()
   }
 
   // Sleep for a while to save energy
-  sleep(UPDATE_INTERVAL); 
+  //  sleep(UPDATE_INTERVAL);
+  sleep(digitalPinToInterrupt(DIGITAL_INPUT_PIR), CHANGE, UPDATE_INTERVAL);
 }
