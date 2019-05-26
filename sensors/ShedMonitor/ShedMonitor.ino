@@ -49,6 +49,7 @@
 #include <SPI.h>
 #include <MySensors.h>  
 #include <DHT.h>
+#include <Bounce2.h>
 
 // Set this to the pin you connected the DHT's data pin to
 #define DHT_DATA_PIN 3
@@ -70,10 +71,14 @@ const unsigned long tUpdate=6000; // update interval data
 unsigned long t0 = 0;  // The millisecond clock in the main loop.
 
 #define DIGITAL_INPUT_PIR 2   // The digital input you attached your motion sensor.  (Only 2 and 3 g
+#define DIGITAL_INPUT_SOUND 5 // Sound sensor digital input
+#define DIGITAL_INPUT_DOOR 4 // Door reed switch sensor
 
 #define CHILD_ID_HUM 0
 #define CHILD_ID_TEMP 1
 #define CHILD_ID_PIR 2
+#define CHILD_ID_DOOR 3
+#define CHILD_ID_SOUND 4
 
 float lastTemp;
 float lastHum;
@@ -81,15 +86,28 @@ uint8_t nNoUpdatesTemp;
 uint8_t nNoUpdatesHum;
 bool metric = true;
 
-bool lastTripped = false;
+bool pir_lastTripped = false;
+
+// Door stuff
+Bounce debouncer = Bounce();
+int door_oldValue=-1;
+//
+
+// Sound stuff
+int soundDetectedVal = HIGH; // This is where we record our Sound Measurement
+boolean bAlarm = false;
+unsigned long lastSoundDetectTime; // Record the time that we measured a sound
+int soundAlarmTime = 500; // Number of milli seconds to keep the sound alarm high
+//
 
 MyMessage msgHum(CHILD_ID_HUM, V_HUM);
 MyMessage msgTemp(CHILD_ID_TEMP, V_TEMP);
+MyMessage msgDoor(CHILD_ID_DOOR,V_TRIPPED);
 DHT dht;
 
-// Initialize motion message
+// Initialize motion & sound message
 MyMessage msgPIR(CHILD_ID_PIR, V_TRIPPED);
-
+MyMessage msgSound(CHILD_ID_SOUND, V_TRIPPED);
 
 void presentation()  
 { 
@@ -100,7 +118,8 @@ void presentation()
   present(CHILD_ID_HUM, S_HUM);
   present(CHILD_ID_TEMP, S_TEMP);
   present(CHILD_ID_PIR, S_MOTION);
-
+  present(CHILD_ID_DOOR, S_DOOR);
+  present(CHILD_ID_SOUND, S_DOOR);
   metric = getControllerConfig().isMetric;
 }
 
@@ -120,20 +139,64 @@ void setup()
   sleep(dht.getMinimumSamplingPeriod());
 
   pinMode(DIGITAL_INPUT_PIR, INPUT);      // sets the motion sensor digital pin as input
+  pinMode(DIGITAL_INPUT_DOOR, INPUT);     // sets door sensor pin as input
+  digitalWrite(DIGITAL_INPUT_DOOR, HIGH); // pull-up
+
+  pinMode(DIGITAL_INPUT_SOUND, INPUT);     // sets door sensor pin as input
+
+  // After setting up the button, setup debouncer
+  debouncer.attach(DIGITAL_INPUT_DOOR);
+  debouncer.interval(5);
 }
 
 
 void loop()      
 { 
- 
-  // Read digital motion value
-  bool tripped = digitalRead(DIGITAL_INPUT_PIR) == HIGH;
-  if(tripped != lastTripped){
-    lastTripped = tripped;
-    Serial.println(tripped);  
-    send(msgPIR.set(tripped?"1":"0"));  // Send tripped value to gw
+
+  //  DOOR
+  debouncer.update();
+  // Get the update value
+  int door_value = debouncer.read();
+  if (door_value != door_oldValue) {
+     // Send in the new value
+     send(msgDoor.set(door_value==HIGH ? 1 : 0));
+     door_oldValue = door_value;
   }
 
+  // PIR
+  // Read digital motion value
+  bool pir_tripped = digitalRead(DIGITAL_INPUT_PIR) == HIGH;
+  if(pir_tripped != pir_lastTripped){
+    pir_lastTripped = pir_tripped;
+    Serial.println(pir_tripped);  
+    send(msgPIR.set(pir_tripped?"1":"0"));  // Send tripped value to gw
+  }
+
+  // Sound detected?
+  soundDetectedVal = digitalRead(DIGITAL_INPUT_SOUND) ; // read the sound alarm time
+  if (soundDetectedVal == 1) // If we hear a sound
+  {
+    /* Serial.println("loud"); */
+    lastSoundDetectTime = millis(); // record the time of the sound alarm
+    // The following is so you don't scroll on the output screen
+    if (!bAlarm){
+      Serial.println("LOUD");
+      send(msgSound.set(1));  // Send tripped value to gw
+      //gw.send(msg.set(OPEN));
+      bAlarm = true;
+    }
+  }
+  else
+  {
+    /* Serial.println("quiet"); */
+    if( (millis()-lastSoundDetectTime) > soundAlarmTime  &&  bAlarm){
+      Serial.println("quiet");
+      send(msgSound.set(0));
+      bAlarm = false;
+    }
+  }
+
+  // DHT - temp hum
   if((millis()-t0) > tUpdate){
     t0=millis();
 
