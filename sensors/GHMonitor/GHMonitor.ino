@@ -1,12 +1,12 @@
 /** Greenhouse monitoring sketch, based on
- * DhtTemperatureAndHumiditySensor.ino.
- * Uses DHT22 
+   DhtTemperatureAndHumiditySensor.ino.
+   Uses DHT22
 */
 
 // Enable debug prints
 #define MY_DEBUG
 
-// Enable and select radio type attached 
+// Enable and select radio type attached
 #define MY_RADIO_NRF24
 //#define MY_RADIO_RFM69
 //#define MY_RS485
@@ -14,11 +14,11 @@
 #define MY_NODE_ID 2
 
 #include <SPI.h>
-#include <MySensors.h>  
+#include <MySensors.h>
 #include <DHT.h>
 
 // Set this to the pin you connected the DHT's data pin to
-#define DHT_DATA_PIN 3
+#define DHT_DATA_PIN 5
 
 // Set this offset if the sensor has a permanent small offset to the real temperatures
 #define SENSOR_TEMP_OFFSET 0
@@ -47,11 +47,11 @@ MyMessage msgTemp(CHILD_ID_TEMP, V_TEMP);
 DHT dht;
 
 
-void presentation()  
-{ 
+void presentation()
+{
   // Send the sketch version information to the gateway
   sendSketchInfo("GHMonitor", "1.0");
-  
+
   // Register all sensors to gw (they will be created as child devices)
   present(CHILD_ID_HUM, S_HUM);
   present(CHILD_ID_TEMP, S_TEMP);
@@ -72,8 +72,8 @@ void setup()
 }
 
 
-void loop()      
-{  
+void loop()
+{
 
   // Force reading sensor, so it works also after sleep()
   dht.readSensor(true);
@@ -93,10 +93,10 @@ void loop()
     temperature += SENSOR_TEMP_OFFSET;
     send(msgTemp.set(temperature, 1));
 
-    #ifdef MY_DEBUG
+#ifdef MY_DEBUG
     Serial.print("T: ");
     Serial.println(temperature);
-    #endif
+#endif
   } else {
     // Increase no update counter if the temperature stayed the same
     nNoUpdatesTemp++;
@@ -112,11 +112,11 @@ void loop()
     // Reset no updates counter
     nNoUpdatesHum = 0;
     send(msgHum.set(humidity, 1));
-    
-    #ifdef MY_DEBUG
+
+#ifdef MY_DEBUG
     Serial.print("H: ");
     Serial.println(humidity);
-    #endif
+#endif
   } else {
     // Increase no update counter if the humidity stayed the same
     nNoUpdatesHum++;
