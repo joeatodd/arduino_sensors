@@ -43,22 +43,22 @@
 //#define MY_RS485
 
 // Help others...
-#define MY_REPEATER_FEATURE
-#define MY_NODE_ID 1
+//#define MY_REPEATER_FEATURE
+#define MY_NODE_ID 3
 
 #include <SPI.h>
 #include <MySensors.h>  
 #include <DHT.h>
 
 // Set this to the pin you connected the DHT's data pin to
-#define DHT_DATA_PIN 3
+#define DHT_DATA_PIN 5
 
 // Set this offset if the sensor has a permanent small offset to the real temperatures
 #define SENSOR_TEMP_OFFSET 0
 
 // Sleep time between sensor updates (in milliseconds)
 // Must be >1000ms for DHT22 and >2000ms for DHT11
-// static const uint64_t UPDATE_INTERVAL = 6000;
+// static const uint64_t UPDATE_INTERVAL = 360000;
 
 // Force sending an update of the temperature after n sensor reads, so a controller showing the
 // timestamp of the last update doesn't show something like 3 hours in the unlikely case, that
@@ -66,7 +66,7 @@
 // i.e. the sensor would force sending an update every UPDATE_INTERVAL*FORCE_UPDATE_N_READS [ms]
 static const uint8_t FORCE_UPDATE_N_READS = 10;
 
-const unsigned long tUpdate=6000; // update interval data
+const unsigned long tUpdate=360000; // update interval data
 unsigned long t0 = 0;  // The millisecond clock in the main loop.
 
 #define DIGITAL_INPUT_PIR 2   // The digital input you attached your motion sensor.  (Only 2 and 3 g
@@ -80,7 +80,6 @@ float lastHum;
 uint8_t nNoUpdatesTemp;
 uint8_t nNoUpdatesHum;
 bool metric = true;
-
 bool lastTripped = false;
 
 MyMessage msgHum(CHILD_ID_HUM, V_HUM);
@@ -94,7 +93,7 @@ MyMessage msgPIR(CHILD_ID_PIR, V_TRIPPED);
 void presentation()  
 { 
   // Send the sketch version information to the gateway
-  sendSketchInfo("ShedMonitor", "1.1");
+  sendSketchInfo("GarageMonitor", "1.1");
   
   // Register all sensors to gw (they will be created as child devices)
   present(CHILD_ID_HUM, S_HUM);
@@ -128,13 +127,16 @@ void loop()
  
   // Read digital motion value
   bool tripped = digitalRead(DIGITAL_INPUT_PIR) == HIGH;
+  Serial.print("Tripped: ");
+  Serial.println(tripped);  
   if(tripped != lastTripped){
     lastTripped = tripped;
     Serial.println(tripped);  
     send(msgPIR.set(tripped?"1":"0"));  // Send tripped value to gw
   }
 
-  if((millis()-t0) > tUpdate){
+  sleep(dht.getMinimumSamplingPeriod());
+//  if((millis()-t0) > tUpdate){
     t0=millis();
 
     // Force reading sensor, so it works also after sleep()
@@ -184,9 +186,8 @@ void loop()
       nNoUpdatesHum++;
     }
 
-  }
+  //}
 
   // Sleep for a while to save energy
-  //  sleep(UPDATE_INTERVAL);
-  // sleep(digitalPinToInterrupt(DIGITAL_INPUT_PIR), CHANGE, UPDATE_INTERVAL);
+  smartSleep(digitalPinToInterrupt(DIGITAL_INPUT_PIR), CHANGE, tUpdate);
 }
