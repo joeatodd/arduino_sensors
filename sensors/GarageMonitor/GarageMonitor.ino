@@ -1,7 +1,7 @@
-/** Sketch for monitoring T and H in the shed, from 
+/** Sketch for monitoring T/H, motion, door, sound in the garage, from 
  * DhtTemperatureAndHumiditySensor.ino.
- * Currently using DHT11 sensor, but will upgrade to DHT22 soon./
-/**
+ * Uses DHT22, Motion Unit, Door reed switch & sound monitor
+
  * The MySensors Arduino library handles the wireless radio link and protocol
  * between your home built sensors/actuators and HA controller of choice.
  * The sensors forms a self healing radio network with optional repeaters. Each
@@ -112,7 +112,7 @@ MyMessage msgSound(CHILD_ID_SOUND, V_TRIPPED);
 void presentation()  
 { 
   // Send the sketch version information to the gateway
-  sendSketchInfo("ShedMonitor", "1.1");
+  sendSketchInfo("GarageMonitor", "1.2");
   
   // Register all sensors to gw (they will be created as child devices)
   present(CHILD_ID_HUM, S_HUM);
