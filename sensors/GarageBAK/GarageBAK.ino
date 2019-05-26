@@ -93,7 +93,7 @@ MyMessage msgPIR(CHILD_ID_PIR, V_TRIPPED);
 void presentation()  
 { 
   // Send the sketch version information to the gateway
-  sendSketchInfo("GarageMonitor", "1.1");
+  sendSketchInfo("GarageBAK", "1.1");
   
   // Register all sensors to gw (they will be created as child devices)
   present(CHILD_ID_HUM, S_HUM);
