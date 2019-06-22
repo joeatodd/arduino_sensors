@@ -67,8 +67,11 @@
 // i.e. the sensor would force sending an update every UPDATE_INTERVAL*FORCE_UPDATE_N_READS [ms]
 static const uint8_t FORCE_UPDATE_N_READS = 10;
 
-const unsigned long tUpdate=6000; // update interval data
+const unsigned long tUpdate=60000; // update interval data
 unsigned long t0 = 0;  // The millisecond clock in the main loop.
+unsigned long lastDoorTime = 0;  // The millisecond clock in the main loop.
+unsigned long lastMotionTime = 0;  // The millisecond clock in the main loop.
+unsigned long lastSoundTime = 0;  // The millisecond clock in the main loop.
 
 #define DIGITAL_INPUT_PIR 2   // The digital input you attached your motion sensor.  (Only 2 and 3 g
 #define DIGITAL_INPUT_SOUND 5 // Sound sensor digital input
@@ -157,19 +160,21 @@ void loop()
   debouncer.update();
   // Get the update value
   int door_value = debouncer.read();
-  if (door_value != door_oldValue) {
+  if (door_value != door_oldValue || millis() - lastDoorTime > tUpdate ) {
      // Send in the new value
      send(msgDoor.set(door_value==HIGH ? 1 : 0));
      door_oldValue = door_value;
+     lastDoorTime = millis();
   }
 
   // PIR
   // Read digital motion value
   bool pir_tripped = digitalRead(DIGITAL_INPUT_PIR) == HIGH;
-  if(pir_tripped != pir_lastTripped){
+  if(pir_tripped != pir_lastTripped || millis() - lastMotionTime > tUpdate){
     pir_lastTripped = pir_tripped;
     Serial.println(pir_tripped);  
     send(msgPIR.set(pir_tripped?"1":"0"));  // Send tripped value to gw
+    lastMotionTime = millis();
   }
 
   // Sound detected?
@@ -179,9 +184,10 @@ void loop()
     /* Serial.println("loud"); */
     lastSoundDetectTime = millis(); // record the time of the sound alarm
     // The following is so you don't scroll on the output screen
-    if (!bAlarm){
+    if (!bAlarm || millis() - lastSoundTime > tUpdate){
       Serial.println("LOUD");
       send(msgSound.set(1));  // Send tripped value to gw
+      lastSoundTime = millis();
       //gw.send(msg.set(OPEN));
       bAlarm = true;
     }
@@ -189,9 +195,10 @@ void loop()
   else
   {
     /* Serial.println("quiet"); */
-    if( (millis()-lastSoundDetectTime) > soundAlarmTime  &&  bAlarm){
+    if( ((millis()-lastSoundDetectTime) > soundAlarmTime  &&  bAlarm)  || millis() - lastSoundTime > tUpdate){
       Serial.println("quiet");
       send(msgSound.set(0));
+      lastSoundTime = millis();
       bAlarm = false;
     }
   }
