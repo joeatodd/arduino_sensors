@@ -71,6 +71,14 @@ const unsigned long tUpdate=60000; // update interval data
 unsigned long t0 = 0;  // The millisecond clock in the main loop.
 unsigned long lastDoorTime = 0;  // The millisecond clock in the main loop.
 unsigned long lastMotionTime = 0;  // The millisecond clock in the main loop.
+
+unsigned long firstMotionTime = 0;
+const unsigned long motionWindow=30000;
+uint8_t motionCount=0;
+const uint8_t motionThresh=3;
+bool motionTripped=false;
+bool lastMotionTripped=false;
+
 unsigned long lastSoundTime = 0;  // The millisecond clock in the main loop.
 
 #define DIGITAL_INPUT_PIR 2   // The digital input you attached your motion sensor.  (Only 2 and 3 g
@@ -167,14 +175,36 @@ void loop()
      lastDoorTime = millis();
   }
 
-  // PIR
-  // Read digital motion value
+  // new PIR:
+  // Only send 'tripped' if the motion detector fires more than
+  // motionThresh times in motionWindow milliseconds.
   bool pir_tripped = digitalRead(DIGITAL_INPUT_PIR) == HIGH;
-  if(pir_tripped != pir_lastTripped || millis() - lastMotionTime > tUpdate){
+  if(pir_tripped != pir_lastTripped){
+
     pir_lastTripped = pir_tripped;
-    Serial.println(pir_tripped);  
-    send(msgPIR.set(pir_tripped?"1":"0"));  // Send tripped value to gw
+
+    // Start the clock again
+    if(pir_tripped && motionCount == 0){
+      firstMotionTime = millis();
+      Serial.println("Starting the clock");
+    }
+
+    if(pir_tripped){
+      motionCount++;
+      Serial.println("trip count: ");
+      Serial.println(motionCount);
+    }
+    motionTripped = motionCount >= motionThresh ? true : false;
+  }
+
+  if(millis() - firstMotionTime > motionWindow) motionCount=0;
+
+  if(motionTripped != lastMotionTripped || millis() - lastMotionTime > tUpdate){
+    send(msgPIR.set(motionTripped?"1":"0"));  // Send tripped value to gw */
+    lastMotionTripped = motionTripped;
+    Serial.println(motionTripped?"Big trip":"Big untrip");
     lastMotionTime = millis();
+    if(motionTripped) motionCount=0; //reset
   }
 
   // Sound detected?
