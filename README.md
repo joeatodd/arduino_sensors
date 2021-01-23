@@ -27,4 +27,6 @@ I had to manually debounce the motion detector because occasionally a spider wan
 
 Alarm signal is passed to homeassistant which raises the alarm via mobile notification and Sonos speakers in the house.
 
+Also has a temp/humidity sensor too - because why not?
+
 ![alarm](./media/garage_alarm.jpg)
