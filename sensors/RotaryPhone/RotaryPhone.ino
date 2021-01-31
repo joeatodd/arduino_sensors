@@ -3,21 +3,42 @@
 #include <Keypad.h>
 /* #include <MySensors.h> */
 
-// 4x4 keypad matrix
-const byte rows = 4;
+// 3x4 keypad matrix
+const byte rows = 3;
 const byte cols = 4;
 
-char keys[rows][cols] = {{'0','1','2','3'},{'4','5','6','7'},{'8','9','10','11'},{'12','13','14','15'}}; // TODO map these
+char keys[rows][cols] = {{'0','1','2','3'},
+			 {'4','5','6','7'},
+			 {'8','9','#','*'}};
 
-/* byte rowPins[rows] = {2,3,6,5}; */
-/* byte colPins[cols] = {A4,A5,A1,A0}; // <- TODO sort a0 etc */
+// Had to work out these pins by trial and error...
+byte rowPins[rows] = {A0,A1,A4};
+byte colPins[cols] = {2,3,5,6};
 
-/* byte rowPins[rows] = {2,3,6,5}; */
-/* byte colPins[cols] = {A4,A5,A1,A0}; // <- TODO sort a0 etc */
+// corrected:
 
-byte rowPins[rows] = {2,A4,3,A5};
-byte colPins[cols] = {6,A1,5,A0};
+// #  0
+// *  8
+// 0  4
+// 1  9
+// 2  5
+// 3  1
+// 4  0
+// 5  6
+// 6  2
+// 7  1
+// 8  7
+// 9  3
 
+
+// standard keypad model:
+
+// 7 8 9
+// 4 5 6
+// 1 2 3
+// * 0 #
+
+// Conclusion - something wrong with A4, A5? They may be different by default
 Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, rows, cols );
 
 /* keypad.setHoldTime(); */
