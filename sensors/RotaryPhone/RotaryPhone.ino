@@ -3,40 +3,20 @@
 #include <Keypad.h>
 /* #include <MySensors.h> */
 
-// 3x4 keypad matrix
-const byte rows = 3;
+// 4x4 keypad matrix (one whole row is just the central button)
+const byte rows = 4;
 const byte cols = 4;
 
-char keys[rows][cols] = {{'0','1','2','3'},
-			 {'4','5','6','7'},
-			 {'8','9','#','*'}};
+
+char keys[rows][cols] = {{'*','7','4','1'},
+			 {'0','8','5','2'},
+			 {'#','9','6','3'},
+			 {'R','R','R','R'}}; // this whole row is just the reset button
+
 
 // Had to work out these pins by trial and error...
-byte rowPins[rows] = {A0,A1,A4};
+byte rowPins[rows] = {A0,A1,A4,A5};
 byte colPins[cols] = {2,3,5,6};
-
-// corrected:
-
-// #  0
-// *  8
-// 0  4
-// 1  9
-// 2  5
-// 3  1
-// 4  0
-// 5  6
-// 6  2
-// 7  1
-// 8  7
-// 9  3
-
-
-// standard keypad model:
-
-// 7 8 9
-// 4 5 6
-// 1 2 3
-// * 0 #
 
 // Conclusion - something wrong with A4, A5? They may be different by default
 Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, rows, cols );
