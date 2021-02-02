@@ -1,12 +1,21 @@
 #define INO_DEBUG
+#define MY_RADIO_NRF24
 
+#define MY_NODE_ID 5
+
+#define CHILD_ID_KEYS 0
+
+#include <SPI.h>
 #include <Keypad.h>
-/* #include <MySensors.h> */
+#include <MySensors.h>
 
 // 4x4 keypad matrix (one whole row is just the central button)
 const byte rows = 4;
 const byte cols = 4;
 
+char test_msg[3] = "012";
+
+MyMessage msgButt(CHILD_ID_KEYS, V_TEXT);
 
 char keys[rows][cols] = {{'*','7','4','1'},
 			 {'0','8','5','2'},
@@ -24,9 +33,14 @@ Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, rows, cols );
 /* keypad.setHoldTime(); */
 /* keypad.setDebounceTime(); */
 
-/* void presentation(){ */
+void presentation(){
+  /* Send the sketch version information to the gateway */
+  sendSketchInfo("RotaryPhone", "1.0");
 
-/* } */
+  /* Register all sensors to gw (they will be created as child devices) */
+  present(CHILD_ID_KEYS, S_INFO);
+
+}
 
 void setup(){
 
@@ -38,7 +52,7 @@ void setup(){
 }
 
 void loop(){
-  /* Serial.println("HELLO"); */
+  Serial.println("HELLO");
   char key = keypad.getKey();
   if (key != NO_KEY){
     Serial.println(key);
