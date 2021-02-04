@@ -1,10 +1,9 @@
-
-//#define RADIO
+#define RADIO
 #define INO_DEBUG
 
 #ifdef RADIO
 #define MY_DEBUG
-#define MY_RADIO_RF24
+#define MY_RADIO_NRF24
 
 #define MY_NODE_ID 5
 
@@ -22,11 +21,8 @@
 const byte rows = 4;
 const byte cols = 4;
 
-char test_msg[3] = "01";
-
-
 #ifdef RADIO
-MyMessage msgButt(CHILD_ID_KEYS, V_TEXT);
+MyMessage msgKey(CHILD_ID_KEYS, V_TEXT);
 #endif
 
 char keys[rows][cols] = {{'*','7','4','1'},
@@ -48,11 +44,11 @@ Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, rows, cols );
 void presentation(){
   /* Send the sketch version information to the gateway */
 
-  #ifdef RADIO
+#ifdef RADIO
   sendSketchInfo("RotaryPhone", "1.0");
   /* Register all sensors to gw (they will be created as child devices) */
   present(CHILD_ID_KEYS, S_INFO);
-  #endif
+#endif
 }
 
 void setup(){
@@ -61,21 +57,29 @@ void setup(){
   Serial.begin(9600);
 #endif
 
-// Setup the button
+// Setup the button for the receiver cradle (child lock)
 pinMode(BUTTON_PIN, INPUT);
-// Activate internal pull-up
 digitalWrite(BUTTON_PIN, HIGH);
 
 }
 
 void loop(){
-  /* Serial.println("HELLO"); */
-  char key = keypad.getKey();
-  bool receiver = (digitalRead(BUTTON_PIN) == HIGH);
-  Serial.println(receiver);
 
-  if (key != NO_KEY){// && digitalRead(BUTTON_PIN) == HIGH){
+  // Get the pressed key
+  char key = keypad.getKey();
+  // Check if the receiver is in the cradle
+  bool receiver = (digitalRead(BUTTON_PIN) == HIGH);
+
+  if (key != NO_KEY && receiver){
+
+#ifdef INO_DEBUG
     Serial.println(key);
+#endif
+
+#ifdef RADIO
+    // Tell homeassistant which key was pressed
+    send(msgKey.set(key));
+#endif
   }
 
 }
