@@ -1,4 +1,4 @@
-#define RADIO
+//#define RADIO
 #define INO_DEBUG
 
 #ifdef RADIO
@@ -14,6 +14,7 @@
 #endif
 
 #include <Keypad.h>
+#include <avr/sleep.h>
 
 #define BUTTON_PIN A2
 
@@ -51,6 +52,23 @@ void presentation(){
 #endif
 }
 
+void wakeUp(){
+  sleep_disable();
+  detachInterrupt(0);
+}
+
+// Trying out basic sleep functionality
+void goToSleep(){
+
+  sleep_enable();
+  attachInterrupt(0, wakeUp, LOW);
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+  Serial.println("Yaaawn");
+  delay(200);
+  sleep_cpu();
+  Serial.println("Big stretch!");
+}
+
 void setup(){
 
 #ifdef INO_DEBUG
@@ -65,6 +83,7 @@ digitalWrite(BUTTON_PIN, HIGH);
 
 void loop(){
 
+  goToSleep();
   // Get the pressed key
   char key = keypad.getKey();
   // Check if the receiver is in the cradle
