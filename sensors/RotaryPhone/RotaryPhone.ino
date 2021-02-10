@@ -1,3 +1,4 @@
+
 //#define RADIO
 #define INO_DEBUG
 
@@ -23,6 +24,8 @@
 const byte rows = 4;
 const byte cols = 4;
 
+String status;
+
 #ifdef RADIO
 MyMessage msgKey(CHILD_ID_KEYS, V_TEXT);
 #endif
@@ -43,7 +46,34 @@ Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, rows, cols );
 /* keypad.setDebounceTime(); */
 
 ISR(PCINT1_vect){
-  /* sleep_disable(); */
+  /* Do nothing (just wake). Note that if this is */
+  /* not defined, then the button press results in */
+  /* a reset rather than waking and progressing */
+}
+
+
+void colPinsHigh(){
+  // Set col pins to input high as per Keypad::scanKeys
+  for (byte i=0; i < cols; i++){
+    pinMode(colPins[i], INPUT);
+    digitalWrite(colPins[i], HIGH);
+  }
+}
+
+void colPinsLow(){
+  // Set colpins output low
+  for (byte i = 0; i < cols; i++){
+    pinMode(colPins[i], OUTPUT);
+    digitalWrite(colPins[i], LOW);
+  }
+}
+
+void rowPinsHigh(){
+  // Set row pins input pullup
+  // This is also what KeyPad expects
+  for (byte i = 0; i < rows; i++){
+    pinMode(rowPins[i], INPUT_PULLUP);
+  }
 }
 
 void presentation(){
@@ -62,70 +92,138 @@ void goToSleep(){
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
   sleep_enable();
 
-  PCIFR |= bit (PCIF1);
-  PCICR |= bit (PCIE1);
+  PCIFR |= bit (PCIF1);	// Clear interrupt flag
+  PCICR |= bit (PCIE1);  // Enable interrupt on relevant pins
 
   byte ADCSRA_prev = ADCSRA;
   ADCSRA = 0;
-  power_all_disable();
+  /* power_all_disable(); */
 
-  byte i;
-  // Set colpins output low
-  for (i = 0; i < cols; i++){
-    pinMode(colPins[i], OUTPUT);
-    digitalWrite(colPins[i], LOW);
-  }
+  colPinsLow();
+  rowPinsHigh();
 
-  // Set row pins input pullup
-  for (i = 0; i < rows; i++){
-    pinMode(rowPins[i], INPUT_PULLUP);
+  // Check any buttons currently pressed
+  for (byte i = 0; i < rows; i++){
+    if (digitalRead(rowPins[i]) == LOW){
+      Serial.println("Button still pressed");
+
+      colPinsHigh();
+      return;
+    }
   }
 
   Serial.println("Yaaawn");
   Serial.flush();
-  delay(50);
+  delay(500);
   sleep_cpu();
+
+  // zzzz...
 
   sleep_disable();
 
-  power_all_enable();
+  /* power_all_enable(); */
   ADCSRA = ADCSRA_prev;
   Serial.println("Big stretch!");
-  Serial.flush();
+
+  colPinsHigh();
+  rowPinsHigh();
 }
 
 void setup(){
 
 #ifdef INO_DEBUG
   Serial.begin(9600);
+  Serial.println("**** Booting ****");
 #endif
 
   // Setup the button for the receiver cradle (child lock)
   pinMode(BUTTON_PIN, INPUT);
   digitalWrite(BUTTON_PIN, HIGH);
 
-  /* PCMSK1 |= bit(PCINT10); */
-  // A0,A1,A4,A5
+  // Enable interrupt only on pins A0,A1,A4,A5
   PCMSK1 = 0;
   PCMSK1 |= bit(PCINT8) | bit(PCINT9) | bit(PCINT12) | bit(PCINT13);
 }
 
+char getKeyPress(){
+  // Use keypad.getKeys() and return first newly 'PRESSED' key
+  // The logic of keypad.getKey() isn't great for sleeping, I don't think
+  if (keypad.getKeys()){
+    for (int i=0; i < LIST_MAX; i++){
+      if((keypad.key[i].stateChanged) && (keypad.key[i].kstate == PRESSED)){
+	return keypad.key[i].kchar;
+      }
+    }
+    return NO_KEY;
+
+  }else{
+    return NO_KEY;
+  }
+}
+
+void waitForRelease(){
+  // Update the keypad every 100ms until all released (then we can sleep)
+  bool anyPressed;
+  do
+    {
+      anyPressed = false;
+
+      keypad.getKeys();
+      for (int i=0; i < LIST_MAX; i++){
+	if((keypad.key[i].kstate == PRESSED) || (keypad.key[i].kstate == HOLD)){
+	  anyPressed = true;
+	  break;
+	}
+      }
+      delay(100);
+    }while(anyPressed);
+}
+
+void padStatus(){
+  for (byte i = 0; i < LIST_MAX; i++){
+    if (keypad.key[i].kchar == ""){
+      continue;
+    }
+    if(keypad.key[i].kstate == IDLE){continue;}
+
+    switch (keypad.key[i].kstate){
+    case PRESSED:
+      status = "PRESSED";
+      break;
+    case HOLD:
+      status = "HOLD";
+      break;
+    case RELEASED:
+      status = "RELEASED";
+      break;
+    }
+
+    Serial.print("Key: ");
+    Serial.print(keypad.key[i].kchar);
+    Serial.print(" ");
+    Serial.print(status);
+    Serial.print(" changed: ");
+    Serial.println(keypad.key[i].stateChanged);
+  }
+}
+
 void loop(){
 
-  Serial.println("Big stretch loop!");
-
   // Get the pressed key
-  char key = keypad.getKey();
+  /* char key = keypad.getKey(); */
+  char key = getKeyPress();
   // Check if the receiver is in the cradle
   bool receiver = (digitalRead(BUTTON_PIN) == HIGH);
 
-  if (key != NO_KEY && receiver){
+  if (key != NO_KEY ){ //&& receiver){
 
-    delay(200);
 
 #ifdef INO_DEBUG
-    Serial.println(key);
-    Serial.flush();
+    Serial.print("**** Keypad registered: ");
+    Serial.print(key);
+    Serial.println(" ****");
+
+    padStatus();
 #endif
 
 #ifdef RADIO
@@ -133,8 +231,18 @@ void loop(){
     send(msgKey.set(key));
 #endif
 
-  }else{
+    waitForRelease();
 
+  }else{ // NO_KEY
+
+
+#ifdef INO_DEBUG
+    Serial.println("No button");
+    padStatus();
+#endif
+
+    waitForRelease();
     goToSleep();
   }
 }
+
