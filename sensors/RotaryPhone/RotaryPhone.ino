@@ -229,7 +229,7 @@ void loop(){
   // Check if the receiver is in the cradle
   bool receiver = (digitalRead(BUTTON_PIN) == HIGH);
 
-  if (key != NO_KEY ){ //&& receiver){
+  if (key != NO_KEY && receiver){
 
 
 #ifdef INO_DEBUG
