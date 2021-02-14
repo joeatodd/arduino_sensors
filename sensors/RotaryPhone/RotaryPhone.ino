@@ -30,11 +30,20 @@ String status;
 MyMessage msgKey(CHILD_ID_KEYS, V_TEXT);
 #endif
 
-char keys[rows][cols] = {{'*','7','4','1'},
-			 {'0','8','5','2'},
-			 {'#','9','6','3'},
-			 {'R','R','R','R'}}; // this whole row is just the reset button
+char keys[rows][cols] = {{'*','7','4','1'},  // A0
+			 {'0','8','5','2'},  // A1
+			 {'#','9','6','3'},  // A4
+			 {'R','R','R','R'}}; // A5 // this whole row is just the reset button
+                        // 2   3   5   6
 
+/* Input row 0 (A0) is low for every column if any of the keys are pressed.
+
+   It's nothing to do with sleep - confirmed by disabling the sleepy
+   However, when I don't even enter the goToSleep() function, the problem does get
+   better, though it still *sometimes* occurs on pins 7 & *...
+
+   Dodgy wiring?
+*/
 
 // Had to work out these pins by trial and error...
 byte rowPins[rows] = {A0,A1,A4,A5};
@@ -103,6 +112,7 @@ void goToSleep(){
   rowPinsHigh();
 
   // Check any buttons currently pressed
+  // Note this shouldn't be necessary any more as we waitForRelease()
   for (byte i = 0; i < rows; i++){
     if (digitalRead(rowPins[i]) == LOW){
       Serial.println("Button still pressed");
@@ -114,7 +124,6 @@ void goToSleep(){
 
   Serial.println("Yaaawn");
   Serial.flush();
-  delay(500);
   sleep_cpu();
 
   // zzzz...
