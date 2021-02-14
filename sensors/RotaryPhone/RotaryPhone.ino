@@ -1,6 +1,6 @@
 
-//#define RADIO
-#define INO_DEBUG
+#define RADIO
+//#define INO_DEBUG
 
 #ifdef RADIO
 #define MY_DEBUG
@@ -30,23 +30,25 @@ String status;
 MyMessage msgKey(CHILD_ID_KEYS, V_TEXT);
 #endif
 
-char keys[rows][cols] = {{'*','7','4','1'},  // A0
+char keys[rows][cols] = {{'*','7','4','1'},  // 7
 			 {'0','8','5','2'},  // A1
 			 {'#','9','6','3'},  // A4
 			 {'R','R','R','R'}}; // A5 // this whole row is just the reset button
                         // 2   3   5   6
 
-/* Input row 0 (A0) is low for every column if any of the keys are pressed.
+/* Input row 0 (7) is low for every column if any of the keys are pressed.
 
    It's nothing to do with sleep - confirmed by disabling the sleepy
    However, when I don't even enter the goToSleep() function, the problem does get
    better, though it still *sometimes* occurs on pins 7 & *...
 
    Dodgy wiring?
+
+   Yes, hardware problem, switched pin A0 to 7
 */
 
 // Had to work out these pins by trial and error...
-byte rowPins[rows] = {A0,A1,A4,A5};
+byte rowPins[rows] = {7,A1,A4,A5};
 byte colPins[cols] = {2,3,5,6};
 
 Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, rows, cols );
@@ -58,6 +60,9 @@ ISR(PCINT1_vect){
   /* Do nothing (just wake). Note that if this is */
   /* not defined, then the button press results in */
   /* a reset rather than waking and progressing */
+}
+
+ISR(PCINT2_vect){
 }
 
 
@@ -101,12 +106,12 @@ void goToSleep(){
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
   sleep_enable();
 
-  PCIFR |= bit (PCIF1);	// Clear interrupt flag
-  PCICR |= bit (PCIE1);  // Enable interrupt on relevant pins
+  PCIFR |= bit (PCIF1) | bit (PCIF2);	// Clear interrupt flag
+  PCICR |= bit (PCIE1) | bit (PCIE2);  // Enable interrupt on relevant pins
 
   byte ADCSRA_prev = ADCSRA;
   ADCSRA = 0;
-  /* power_all_disable(); */
+  power_all_disable();
 
   colPinsLow();
   rowPinsHigh();
@@ -130,7 +135,7 @@ void goToSleep(){
 
   sleep_disable();
 
-  /* power_all_enable(); */
+  power_all_enable();
   ADCSRA = ADCSRA_prev;
   Serial.println("Big stretch!");
 
@@ -149,9 +154,9 @@ void setup(){
   pinMode(BUTTON_PIN, INPUT);
   digitalWrite(BUTTON_PIN, HIGH);
 
-  // Enable interrupt only on pins A0,A1,A4,A5
-  PCMSK1 = 0;
-  PCMSK1 |= bit(PCINT8) | bit(PCINT9) | bit(PCINT12) | bit(PCINT13);
+  // Enable interrupt only on pins 7,A1,A4,A5
+  PCMSK1 = bit(PCINT9) | bit(PCINT12) | bit(PCINT13);
+  PCMSK2 = bit(PCINT23);
 }
 
 char getKeyPress(){
