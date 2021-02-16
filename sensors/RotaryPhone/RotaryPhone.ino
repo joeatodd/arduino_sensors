@@ -57,12 +57,10 @@ Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, rows, cols );
 /* keypad.setDebounceTime(); */
 
 ISR(PCINT1_vect){
-  /* Do nothing (just wake). Note that if this is */
-  /* not defined, then the button press results in */
-  /* a reset rather than waking and progressing */
+  PCICR = 0;
 }
-
 ISR(PCINT2_vect){
+  PCICR = 0;
 }
 
 
@@ -103,16 +101,6 @@ void presentation(){
 // Trying out basic sleep functionality
 void goToSleep(){
 
-  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-  sleep_enable();
-
-  PCIFR |= bit (PCIF1) | bit (PCIF2);	// Clear interrupt flag
-  PCICR |= bit (PCIE1) | bit (PCIE2);  // Enable interrupt on relevant pins
-
-  byte ADCSRA_prev = ADCSRA;
-  ADCSRA = 0;
-  power_all_disable();
-
   colPinsLow();
   rowPinsHigh();
 
@@ -129,6 +117,17 @@ void goToSleep(){
 
   Serial.println("Yaaawn");
   Serial.flush();
+
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+  sleep_enable();
+
+  byte ADCSRA_prev = ADCSRA;
+  ADCSRA = 0;
+  power_all_disable();
+
+  PCIFR |= bit (PCIF1) | bit (PCIF2);	// Clear interrupt flag
+  PCICR |= bit (PCIE1) | bit (PCIE2);  // Enable interrupt on relevant pins
+
   sleep_cpu();
 
   // zzzz...
@@ -195,7 +194,7 @@ void waitForRelease(){
 
 void padStatus(){
   for (byte i = 0; i < LIST_MAX; i++){
-    if (keypad.key[i].kchar == ""){
+    if (keypad.key[i].kchar == '\0'){
       continue;
     }
     if(keypad.key[i].kstate == IDLE){continue;}
